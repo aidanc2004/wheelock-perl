@@ -54,26 +54,67 @@ sub get_location_id {
   }
 }
 
-# Get the menu information for the current date as a hash reference
-sub get_menu {
+# Get the api json as a hash reference
+sub get_api {
   my ($school_id, $location_id) = @_;
 
   # Breakfast, lunch, dinner, first period is ""
   my $period = "";
   
-  # Date in "yyyymmdd" format
-  my $date = strftime "%Y%m%d", localtime;
-
+  my $date = strftime "%Y%m%d", localtime; # "yyyymmdd" format
+  
   get_json "https://api.dineoncampus.ca/v1/location/$location_id/periods/$period?platform=0&date=$date";
+}
+
+# Get the categories of the menu from the api as a hash reference
+sub get_menu {
+  my $api = shift;
+
+  my $readable_date = strftime "%d-%m-%Y", localtime;
+
+  # Check if it's closed
+  if ($api->{closed} == 1) {
+    say "Wheelock hall is closed on $readable_date.";
+    exit 0;
+  }
+  
+  # Check if a menu is avaliable
+  die "No menu avaliable for $readable_date" unless defined $api->{menu};
+
+  # Return all categories (The Kitchen, The Grill House, etc.)
+  my $categories = $api->{menu}->{periods}->{categories};
+}
+
+sub print_category {
+  my $category = shift;
+
+  say $category->{name};
+
+  my $items = $category->{items};
+  
+  foreach (@$items) {
+    say "- " . $_->{name};
+  }
+};
+
+sub test {
+  my $asdf = shift;
+  
+  say "test";
+  say $asdf;
 }
 
 sub main {
   my $school_id = get_school_id;
   my $location_id = get_location_id $school_id;
 
-  my $menu = get_menu $school_id, $location_id;
+  my $api = get_api $school_id, $location_id;
+  
+  my $categories = get_menu $api;
 
-  say $menu->{status};
+  foreach (@$categories) {
+    print_category $_;
+  }
 }
 
 main;
