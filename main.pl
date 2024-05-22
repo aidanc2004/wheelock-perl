@@ -17,7 +17,7 @@ my $location_name = "Wheelock Dining Hall";
 my $ua = LWP::UserAgent->new;
 $ua->ssl_opts(verify_hostname => 0);
 
-# Get JSON from a URL and return it as a hash reference.
+# Get JSON from a URL and return it as a hash reference
 sub get_json {
   my $url = shift;
 
@@ -39,7 +39,7 @@ sub get_school_id {
   }
 }
 
-# Get the ID of a location at the school.
+# Get the ID of a location at the school
 sub get_location_id {
   my $school_id = shift;
 
@@ -54,6 +54,26 @@ sub get_location_id {
   }
 }
 
-say get_school_id;
+# Get the menu information for the current date as a hash reference
+sub get_menu {
+  my ($school_id, $location_id) = @_;
 
-say get_location_id get_school_id;
+  # Breakfast, lunch, dinner, first period is ""
+  my $period = "";
+  
+  # Date in "yyyymmdd" format
+  my $date = strftime "%Y%m%d", localtime;
+
+  get_json "https://api.dineoncampus.ca/v1/location/$location_id/periods/$period?platform=0&date=$date";
+}
+
+sub main {
+  my $school_id = get_school_id;
+  my $location_id = get_location_id $school_id;
+
+  my $menu = get_menu $school_id, $location_id;
+
+  say $menu->{status};
+}
+
+main;
