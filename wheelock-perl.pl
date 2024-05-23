@@ -97,7 +97,21 @@ sub get_periods {
     
     push(@periods, \%period);
   }
+
+  # Save the periods to a JSON file
+  my $json = encode_json \@periods;
+  open my $fh, ">", "periods.json";
+  print $fh $json;
+  
   @periods;
+}
+
+# Load periods from periods.json
+sub load_periods {
+  open my $fh, "<", "periods.json";
+  my $text = join("", <$fh>);
+  my $json = decode_json $text;
+  @$json;
 }
 
 # Get the categories of the menu from the API as a hash reference
@@ -124,6 +138,7 @@ sub select_period_id {
   my $period_name = shift;
   my $periods = shift;
 
+  # If no input then default to ""
   return "" unless (defined $period_name);
   
   foreach (@$periods) {
@@ -154,20 +169,22 @@ sub print_menu {
 };
 
 sub main {
+  # Command line args
   my $period_name;
-  
   GetOptions("period=s" => \$period_name);
   
   my $school_id = get_school_id;
   my $location_id = get_location_id $school_id;
 
-  # Get period names and IDs from the API so we can get other periods
-  # TODO: This is slow, store periods client-side so we only need to do this once
-  my @periods = get_periods (get_api $school_id, $location_id, "TESTING");
+  # Get/load period names and IDs from the API so we can get other periods
+  my @periods;
+  if (-e "periods.json") {
+    @periods = load_periods;
+  } else {
+    @periods = get_periods (get_api $school_id, $location_id, "TESTING");
+  }
   
   my $period_id = select_period_id $period_name, \@periods;
-
-  say $period_id;
   
   # Get API again with period id
   my $api = get_api $school_id, $location_id, $period_id, "TESTING";

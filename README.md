@@ -4,7 +4,6 @@ Program to get the current menu of Acadia University's dining hall Wheelock hall
 
 ## TODO:
 
-- Show all the different periods
 - Choose another date to show
 - Filter specific categories
 
