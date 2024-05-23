@@ -179,7 +179,17 @@ sub print_menu {
 sub main {
   # Command line args
   my $period_name;
-  GetOptions("period=s" => \$period_name);
+  my $help;
+  GetOptions(
+    "period=s" => \$period_name,
+    "help" => \$help
+  );
+
+  # Help menu
+  if ($help) {
+    say "Usage: $0 --period breakfast/lunch/etc";
+    exit;
+  }
 
   # Load variables from config
   my $config = load_config;
