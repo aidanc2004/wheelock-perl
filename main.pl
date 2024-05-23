@@ -57,11 +57,12 @@ sub get_location_id {
 }
 
 # Get the API JSON as a hash reference
+# TODO: Allow custom date input (ex. get next day's menu)
 sub get_api {
-  my ($school_id, $location_id, $period) = @_;
+  my ($school_id, $location_id, $period_id) = @_;
 
   # Breakfast, lunch, or dinner. Default is ""
-  $period ||= "";
+  $period_id ||= "";
   
   # Load testing dataset, temporary
   my $test_data = shift;
@@ -76,7 +77,7 @@ sub get_api {
   
   my $date = strftime "%Y%m%d", localtime; # "yyyymmdd" format
   
-  get_json "https://api.dineoncampus.ca/v1/location/$location_id/periods/$period?platform=0&date=$date";
+  get_json "https://api.dineoncampus.ca/v1/location/$location_id/periods/$period_id?platform=0&date=$date";
 }
 
 # Get all of the period names and IDs
@@ -117,6 +118,21 @@ sub get_menu {
   my $categories = $api->{menu}->{periods}->{categories};
 }
 
+# Get the period ID from the period name
+sub select_period_id {
+  my $period_name = shift;
+  my $periods = shift;
+  
+  foreach (@$periods) {
+    if (lc $period_name eq lc $_->{name}) {
+      return $_->{id};
+    }
+  }
+
+  # If it doesn't match any, default to ""
+  return "";
+}
+
 sub print_menu {
   my $categories = shift;
 
@@ -132,24 +148,23 @@ sub print_menu {
       say "- " . $_->{name};
     }
   }
-}
+};
 
 sub main {
+  # TODO: Make this a flag (ex. --period breakfast)
+  my $period_name = $ARGV[0];
+  
   my $school_id = get_school_id;
   my $location_id = get_location_id $school_id;
 
-  # Get API first to determine the different periods and IDs
-  # TODO: Store periods client-side so we only need to do this once
+  # Get period names and IDs from the API so we can get other periods
+  # TODO: This is slow, store periods client-side so we only need to do this once
   my @periods = get_periods (get_api $school_id, $location_id, "TESTING");
-
-  foreach (@periods) {
-    say $_->{id} . ", " . $_->{name};
-  }
-  print "\n";
-
+  
+  my $period_id = select_period_id $period_name, \@periods;
+  
   # Get API again with period id
-  # TODO: Let user use command line args to choose a period
-  my $api = get_api $school_id, $location_id, $periods[0], "TESTING";
+  my $api = get_api $school_id, $location_id, $period_id, "TESTING";
   
   my $categories = get_menu $api;
 
@@ -157,4 +172,3 @@ sub main {
 }
 
 main;
-
