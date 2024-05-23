@@ -12,10 +12,6 @@ use LWP::UserAgent;
 use POSIX "strftime";
 use Getopt::Long;
 
-# Hardcoded for Acadia's Wheelock Hall, but could work for other schools
-my $school_slug = "acadiau";
-my $location_name = "Wheelock Dining Hall";
-
 # User Agent to get data from the API
 my $ua = LWP::UserAgent->new;
 $ua->ssl_opts(verify_hostname => 0);
@@ -31,6 +27,8 @@ sub get_json {
 
 # Get the ID of the school
 sub get_school_id {
+  my $school_slug = shift;
+  
   my $json = get_json "https://api.dineoncampus.ca/v1/sites/public_ca";
     
   my $sites = $json->{"sites"};
@@ -45,6 +43,7 @@ sub get_school_id {
 # Get the ID of a location at the school
 sub get_location_id {
   my $school_id = shift;
+  my $location_name = shift;
 
   my $json = get_json "https://api.dineoncampus.ca/v1/locations/buildings_locations?site_id=$school_id";
 
@@ -73,9 +72,6 @@ sub get_api {
     return decode_json $text;
   }
   
-  # Breakfast, lunch, dinner, first period is ""
-  #my $period = "";
-  
   my $date = strftime "%Y%m%d", localtime; # "yyyymmdd" format
   
   get_json "https://api.dineoncampus.ca/v1/location/$location_id/periods/$period_id?platform=0&date=$date";
@@ -97,11 +93,6 @@ sub get_periods {
     
     push(@periods, \%period);
   }
-
-  # Save the periods to a JSON file
-  my $json = encode_json \@periods;
-  open my $fh, ">", "periods.json";
-  print $fh $json;
   
   @periods;
 }
@@ -112,6 +103,22 @@ sub load_periods {
   my $text = join("", <$fh>);
   my $json = decode_json $text;
   @$json;
+}
+
+# Load the config file from config.json
+sub load_config {
+  open my $fh, "<", "config.json";
+  my $text = join("", <$fh>);
+  my $json = decode_json $text;
+  $json;
+}
+
+# Save periods to periods.json
+sub save_periods {
+  my $periods = shift;
+  my $json = encode_json $periods;
+  open my $fh, ">", "periods.json";
+  print $fh $json;
 }
 
 # Get the categories of the menu from the API as a hash reference
@@ -151,6 +158,7 @@ sub select_period_id {
   return "";
 }
 
+# Print out all of the categories in the menu
 sub print_menu {
   my $categories = shift;
 
@@ -172,9 +180,16 @@ sub main {
   # Command line args
   my $period_name;
   GetOptions("period=s" => \$period_name);
+
+  # Load variables from config
+  my $config = load_config;
   
-  my $school_id = get_school_id;
-  my $location_id = get_location_id $school_id;
+  my $school_slug = $config->{school};
+  my $location_name = $config->{location};
+
+  # Get school and location IDs from names
+  my $school_id = get_school_id $school_slug;
+  my $location_id = get_location_id $school_id, $location_name;
 
   # Get/load period names and IDs from the API so we can get other periods
   my @periods;
@@ -182,16 +197,15 @@ sub main {
     @periods = load_periods;
   } else {
     @periods = get_periods (get_api $school_id, $location_id, "TESTING");
+    save_periods \@periods;
   }
   
+  # API call with current period
   my $period_id = select_period_id $period_name, \@periods;
-  
-  # Get API again with period id
   my $api = get_api $school_id, $location_id, $period_id, "TESTING";
-  
-  my $categories = get_menu $api;
 
-  print_menu $categories;
+  # Print out the menu
+  print_menu (get_menu $api);
 }
 
 main;
