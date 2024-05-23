@@ -59,7 +59,7 @@ sub get_location_id {
 # Get the API JSON as a hash reference
 # TODO: Allow custom date input (ex. get next day's menu)
 sub get_api {
-  my ($school_id, $location_id, $period_id) = @_;
+  my ($school_id, $location_id, $period_id, $date) = @_;
 
   # Breakfast, lunch, or dinner. Default is ""
   $period_id ||= "";
@@ -71,8 +71,6 @@ sub get_api {
     my $text = join("", <$fh>);
     return decode_json $text;
   }
-  
-  my $date = strftime "%Y%m%d", localtime; # "yyyymmdd" format
   
   get_json "https://api.dineoncampus.ca/v1/location/$location_id/periods/$period_id?platform=0&date=$date";
 }
@@ -124,8 +122,7 @@ sub save_periods {
 # Get the categories of the menu from the API as a hash reference
 sub get_menu {
   my $api = shift;
-
-  my $readable_date = strftime "%d-%m-%Y", localtime;
+  my $readable_date = shift;
   
   # Check if it's closed
   if ($api->{closed} == 1) {
@@ -161,8 +158,7 @@ sub select_period_id {
 # Print out all of the categories in the menu
 sub print_menu {
   my $categories = shift;
-
-  my $readable_date = strftime "%d-%m-%Y", localtime;
+  my $readable_date = shift;
   
   say "Menu for $readable_date:";
 
@@ -179,18 +175,20 @@ sub print_menu {
 sub main {
   # Command line args
   my $period_name;
+  my $date;
   my $help;
   GetOptions(
+    "help" => \$help,
     "period=s" => \$period_name,
-    "help" => \$help
+    "date=s" => \$date
   );
 
   # Help menu
   if ($help) {
-    say "Usage: $0 --period breakfast/lunch/etc";
+    say "Usage: $0 --period breakfast/lunch/etc --date DD-MM-YYYY";
     exit;
   }
-
+  
   # Load variables from config
   my $config = load_config;
   
@@ -201,21 +199,33 @@ sub main {
   my $school_id = get_school_id $school_slug;
   my $location_id = get_location_id $school_id, $location_name;
 
+  my $readable_date;
+  
+  unless (defined $date) {
+    $date = strftime "%Y%m%d", localtime; # yyyymmdd format
+    $readable_date = strftime "%d-%m-%Y", localtime;
+  } else {
+    $readable_date = $date;
+    # Convert date in dd-mm-yyyy format to yyyymmdd format
+    $date =~ s/(\d{2})-(\d{2})-(\d{4})/$3$2$1/;
+  }
+
   # Get/load period names and IDs from the API so we can get other periods
   my @periods;
   if (-e "periods.json") {
     @periods = load_periods;
   } else {
-    @periods = get_periods (get_api $school_id, $location_id, "TESTING");
+    @periods = get_periods (get_api $school_id, $location_id, $date, "TESTING");
     save_periods \@periods;
   }
   
   # API call with current period
   my $period_id = select_period_id $period_name, \@periods;
-  my $api = get_api $school_id, $location_id, $period_id, "TESTING";
+  my $api = get_api $school_id, $location_id, $period_id, $date, "TESTING";
 
   # Print out the menu
-  print_menu (get_menu $api);
+  my $categories = get_menu $api, $readable_date;
+  print_menu $categories, $readable_date;
 }
 
 main;
