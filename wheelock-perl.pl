@@ -10,6 +10,7 @@ use feature "say";
 use JSON;
 use LWP::UserAgent;
 use POSIX "strftime";
+use Getopt::Long;
 
 # Hardcoded for Acadia's Wheelock Hall, but could work for other schools
 my $school_slug = "acadiau";
@@ -122,6 +123,8 @@ sub get_menu {
 sub select_period_id {
   my $period_name = shift;
   my $periods = shift;
+
+  return "" unless (defined $period_name);
   
   foreach (@$periods) {
     if (lc $period_name eq lc $_->{name}) {
@@ -151,8 +154,9 @@ sub print_menu {
 };
 
 sub main {
-  # TODO: Make this a flag (ex. --period breakfast)
-  my $period_name = $ARGV[0];
+  my $period_name;
+  
+  GetOptions("period=s" => \$period_name);
   
   my $school_id = get_school_id;
   my $location_id = get_location_id $school_id;
@@ -162,6 +166,8 @@ sub main {
   my @periods = get_periods (get_api $school_id, $location_id, "TESTING");
   
   my $period_id = select_period_id $period_name, \@periods;
+
+  say $period_id;
   
   # Get API again with period id
   my $api = get_api $school_id, $location_id, $period_id, "TESTING";
