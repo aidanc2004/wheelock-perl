@@ -1,7 +1,5 @@
 {
     "school": "acadiau",
     "location": "Wheelock Dining Hall",
-    "hidden_categories": [
-        "Category 2"
-    ]
+    "hidden_categories": []
 }

@@ -61,16 +61,7 @@ sub get_location_id {
 sub get_api {
   my ($school_id, $location_id, $period_id, $date) = @_;
 
-  # Breakfast, lunch, or dinner. Default is ""
-  $period_id ||= "";
-  
-  # Load testing dataset, temporary
-  my $test_data = shift;
-  if (defined $test_data) {
-    open(my $fh, "<", "test-data.json") or die "$!";
-    my $text = join("", <$fh>);
-    return decode_json $text;
-  }
+  $period_id ||= ""; # Breakfast, lunch, dinner. Default is ""
   
   get_json "https://api.dineoncampus.ca/v1/location/$location_id/periods/$period_id?platform=0&date=$date";
 }
@@ -133,7 +124,7 @@ sub get_menu {
   
   # Check if a menu is avaliable
   unless (defined $api->{menu}) {
-    say "No menu avaliable for $readable_date.";
+    say "No menu for $location_name avaliable for $readable_date.";
     exit;
   }
 
@@ -161,7 +152,7 @@ sub select_period_id {
 
 # Print out all of the categories in the menu
 sub print_menu {
-  my ($categories, $hidden_categories, $location_name, $readable_date) = @_;
+  my ($categories, $hidden, $location_name, $readable_date, $show_all) = @_;
 
   say "$location_name, $readable_date:";
 
@@ -169,8 +160,8 @@ sub print_menu {
     my $name = $_->{name};
     my $items = $_->{items};
 
-    # Don't print the category if it's hidden
-    next if (any { $_ eq $name } @$hidden_categories);
+    # Don't print the category if it's hidden, unless using --all flag
+    next if (any { $_ eq $name } @$hidden and not $show_all);
 
     # Print a category
     say "$name";
@@ -184,16 +175,18 @@ sub main {
   # Command line args
   my $period_name;
   my $date;
+  my $show_all;
   my $help;
   GetOptions(
     "help" => \$help,
     "period=s" => \$period_name,
-    "date=s" => \$date
+    "date=s" => \$date,
+    "all" => \$show_all
   );
 
   # Show help menu
   if ($help) {
-    say "Usage: $0 --period breakfast/lunch/etc --date DD-MM-YYYY";
+    say "usage: $0 [--period=breakfast/lunch/etc] [--date=DD-MM-YYYY] [--all]";
     exit;
   }
   
@@ -202,7 +195,7 @@ sub main {
   
   my $school_slug = $config->{school};
   my $location_name = $config->{location};
-  my $hidden_categories = $config->{hidden_categories};
+  my $hidden = $config->{hidden_categories};
   
   # Get school and location IDs from names
   my $school_id = get_school_id $school_slug;
@@ -225,17 +218,17 @@ sub main {
     # Load periods so we don't need to make an unnecessary API call
     @periods = load_periods;
   } else {
-    @periods = get_periods (get_api $school_id, $location_id, $date, "TESTING");
+    @periods = get_periods (get_api $school_id, $location_id, "", $date);
     save_periods \@periods;
   }
   
   # API call with current period
   my $period_id = select_period_id $period_name, \@periods;
-  my $api = get_api $school_id, $location_id, $period_id, $date, "TESTING";
+  my $api = get_api $school_id, $location_id, $period_id, $date;
 
   # Print out the menu
   my $categories = get_menu $api, $location_name, $readable_date;
-  print_menu $categories, $hidden_categories, $location_name, $readable_date;
+  print_menu $categories, $hidden, $show_all, $location_name, $readable_date;
 }
 
 main;
