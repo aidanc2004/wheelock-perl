@@ -58,7 +58,6 @@ sub get_location_id {
 }
 
 # Get the API JSON as a hash reference
-# TODO: Allow custom date input (ex. get next day's menu)
 sub get_api {
   my ($school_id, $location_id, $period_id, $date) = @_;
 
@@ -129,14 +128,17 @@ sub get_menu {
   # Check if it's closed
   if ($api->{closed} == 1) {
     say "$location_name is closed on $readable_date.";
-    exit 0;
+    exit;
   }
   
   # Check if a menu is avaliable
-  die "No menu avaliable for $readable_date" unless defined $api->{menu};
+  unless (defined $api->{menu}) {
+    say "No menu avaliable for $readable_date.";
+    exit;
+  }
 
-  # Return all categories (The Kitchen, The Grill House, etc.)
-  my $categories = $api->{menu}->{periods}->{categories};
+  # Return all categories from the menu (The Kitchen, The Grill House, etc.)
+  $api->{menu}->{periods}->{categories};
 }
 
 # Get the period ID from the period name
@@ -146,7 +148,7 @@ sub select_period_id {
 
   # If no input then default to ""
   return "" unless (defined $period_name);
-  
+
   foreach (@$periods) {
     if (lc $period_name eq lc $_->{name}) {
       return $_->{id};
@@ -154,25 +156,24 @@ sub select_period_id {
   }
 
   # If it doesn't match any, default to ""
-  return "";
+  "";
 }
 
 # Print out all of the categories in the menu
 sub print_menu {
-  my $categories = shift;
-  my $hidden_categories = shift;
-  my $readable_date = shift;
-  
-  say "Menu for $readable_date:";
+  my ($categories, $hidden_categories, $location_name, $readable_date) = @_;
+
+  say "$location_name, $readable_date:";
 
   foreach (@$categories) {
     my $name = $_->{name};
     my $items = $_->{items};
 
-    # Don't print categories if it's hidden
+    # Don't print the category if it's hidden
     next if (any { $_ eq $name } @$hidden_categories);
-    
-    say "\n$name";
+
+    # Print a category
+    say "$name";
     foreach (@$items) {
       say "- $_->{name}";
     }
@@ -234,7 +235,7 @@ sub main {
 
   # Print out the menu
   my $categories = get_menu $api, $location_name, $readable_date;
-  print_menu $categories, $hidden_categories, $readable_date;
+  print_menu $categories, $hidden_categories, $location_name, $readable_date;
 }
 
 main;
