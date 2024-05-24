@@ -11,6 +11,7 @@ use JSON;
 use LWP::UserAgent;
 use POSIX "strftime";
 use Getopt::Long;
+use List::Util qw(any);
 
 # User Agent to get data from the API
 my $ua = LWP::UserAgent->new;
@@ -95,6 +96,14 @@ sub get_periods {
   @periods;
 }
 
+# Save periods to periods.json
+sub save_periods {
+  my $periods = shift;
+  my $json = encode_json $periods;
+  open my $fh, ">", "periods.json";
+  print $fh $json;
+}
+
 # Load periods from periods.json
 sub load_periods {
   open my $fh, "<", "periods.json";
@@ -111,22 +120,15 @@ sub load_config {
   $json;
 }
 
-# Save periods to periods.json
-sub save_periods {
-  my $periods = shift;
-  my $json = encode_json $periods;
-  open my $fh, ">", "periods.json";
-  print $fh $json;
-}
-
 # Get the categories of the menu from the API as a hash reference
 sub get_menu {
   my $api = shift;
+  my $location_name = shift;
   my $readable_date = shift;
   
   # Check if it's closed
   if ($api->{closed} == 1) {
-    say "Wheelock hall is closed on $readable_date.";
+    say "$location_name is closed on $readable_date.";
     exit 0;
   }
   
@@ -158,16 +160,21 @@ sub select_period_id {
 # Print out all of the categories in the menu
 sub print_menu {
   my $categories = shift;
+  my $hidden_categories = shift;
   my $readable_date = shift;
   
   say "Menu for $readable_date:";
 
   foreach (@$categories) {
-    say "\n$_->{name}";
+    my $name = $_->{name};
     my $items = $_->{items};
 
+    # Don't print categories if it's hidden
+    next if (any { $_ eq $name } @$hidden_categories);
+    
+    say "\n$name";
     foreach (@$items) {
-      say "- " . $_->{name};
+      say "- $_->{name}";
     }
   }
 };
@@ -183,7 +190,7 @@ sub main {
     "date=s" => \$date
   );
 
-  # Help menu
+  # Show help menu
   if ($help) {
     say "Usage: $0 --period breakfast/lunch/etc --date DD-MM-YYYY";
     exit;
@@ -194,15 +201,16 @@ sub main {
   
   my $school_slug = $config->{school};
   my $location_name = $config->{location};
-
+  my $hidden_categories = $config->{hidden_categories};
+  
   # Get school and location IDs from names
   my $school_id = get_school_id $school_slug;
   my $location_id = get_location_id $school_id, $location_name;
 
+  # Get $date in yyyymmdd format and $readable_date in dd-mm-yyyy format
   my $readable_date;
-  
   unless (defined $date) {
-    $date = strftime "%Y%m%d", localtime; # yyyymmdd format
+    $date = strftime "%Y%m%d", localtime;
     $readable_date = strftime "%d-%m-%Y", localtime;
   } else {
     $readable_date = $date;
@@ -213,6 +221,7 @@ sub main {
   # Get/load period names and IDs from the API so we can get other periods
   my @periods;
   if (-e "periods.json") {
+    # Load periods so we don't need to make an unnecessary API call
     @periods = load_periods;
   } else {
     @periods = get_periods (get_api $school_id, $location_id, $date, "TESTING");
@@ -224,8 +233,8 @@ sub main {
   my $api = get_api $school_id, $location_id, $period_id, $date, "TESTING";
 
   # Print out the menu
-  my $categories = get_menu $api, $readable_date;
-  print_menu $categories, $readable_date;
+  my $categories = get_menu $api, $location_name, $readable_date;
+  print_menu $categories, $hidden_categories, $readable_date;
 }
 
 main;
