@@ -12,10 +12,14 @@ use LWP::UserAgent;
 use POSIX "strftime";
 use Getopt::Long;
 use List::Util qw(any);
+use Path::Tiny;
 
 # User Agent to get data from the API
 my $ua = LWP::UserAgent->new;
 $ua->ssl_opts(verify_hostname => 0);
+
+# Get path to where the script is for config.json and periods.json
+my $script_path = path($0)->parent->child . "/";
 
 # Get JSON from a URL and return it as a hash reference
 sub get_json {
@@ -90,13 +94,13 @@ sub get_periods {
 sub save_periods {
   my $periods = shift;
   my $json = encode_json $periods;
-  open my $fh, ">", "periods.json";
+  open my $fh, ">", $script_path . "periods.json";
   print $fh $json;
 }
 
 # Load periods from periods.json
 sub load_periods {
-  open my $fh, "<", "periods.json";
+  open my $fh, "<", $script_path . "periods.json";
   my $text = join("", <$fh>);
   my $json = decode_json $text;
   @$json;
@@ -104,7 +108,7 @@ sub load_periods {
 
 # Load the config file from config.json
 sub load_config {
-  open my $fh, "<", "config.json";
+  open my $fh, "<", $script_path . "config.json";
   my $text = join("", <$fh>);
   my $json = decode_json $text;
   $json;
