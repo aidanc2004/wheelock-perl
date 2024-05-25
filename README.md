@@ -10,9 +10,9 @@ As I'm writing this, the Wheelock Hall menu is not open. I'm writing a lot of th
 
 ## Flags
 
-- `--help`: Shows basic program usage.
+- `--help`: Shows program usage.
 - `--period`: What period of the menu should be shown. Breakfast, lunch, dinner, etc.
-- `--date`: The date to get the menu for in DD-MM-YYYY format. (ex. May 24th 2024 is 25-05-2024)
+- `--date`: The date to get the menu for in YYYY-MM-DD format. (ex. May 24th 2024 is 2024-05-24)
 - `--all`: Ignore hidden categories and show all.
 
 ## Config

@@ -205,12 +205,11 @@ sub main {
   # Get $date in yyyymmdd format and $readable_date in dd-mm-yyyy format
   my $readable_date;
   unless (defined $date) {
+    $readable_date = strftime "%Y-%m-%d", localtime;
     $date = strftime "%Y%m%d", localtime;
-    $readable_date = strftime "%d-%m-%Y", localtime;
   } else {
     $readable_date = $date;
-    # Convert date in dd-mm-yyyy format to yyyymmdd format
-    $date =~ s/(\d{2})-(\d{2})-(\d{4})/$3$2$1/;
+    $date =~ s/(\d{4})(\d{2})(\d{2})/$1-$2-$3/;
   }
 
   # Get/load period names and IDs from the API so we can get other periods
