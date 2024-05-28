@@ -80,12 +80,10 @@ sub get_periods {
   my @periods;
 
   foreach (@$api_periods) {
-    my %period = (
+    push(@periods, {
       name => $_->{name},
       id => $_->{id}
-    );
-    
-    push(@periods, \%period);
+    });
   }
   
   @periods;
@@ -95,13 +93,15 @@ sub get_periods {
 sub save_periods {
   my $periods = shift;
   my $json = encode_json $periods;
-  open(my $fh, ">", $script_path . "periods.json") or die "Couldn't save to periods.json: $!";
+  open(my $fh, ">", $script_path . "periods.json")
+    or die "Couldn't save to periods.json: $!";
   print $fh $json;
 }
 
 # Load periods from periods.json
 sub load_periods {
-  open(my $fh, "<", $script_path . "periods.json") or die "Couldn't load periods.json: $!";
+  open(my $fh, "<", $script_path . "periods.json")
+    or die "Couldn't load periods.json: $!";
   my $text = join("", <$fh>);
   my $json = decode_json $text;
   @$json;
@@ -109,7 +109,8 @@ sub load_periods {
 
 # Load the config file from config.json
 sub load_config {
-  open(my $fh, "<", $script_path . "config.json") or die "Couldn't load config.json: $!";
+  open(my $fh, "<", $script_path . "config.json")
+    or die "Couldn't load config.json: $!";
   my $text = join("", <$fh>);
   my $json = decode_json $text;
   $json;
