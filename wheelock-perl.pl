@@ -13,6 +13,7 @@ use POSIX "strftime";
 use Getopt::Long;
 use List::Util qw(any);
 use Path::Tiny;
+use Time::Local;
 
 # User Agent to get data from the API
 my $ua = LWP::UserAgent->new;
@@ -67,7 +68,7 @@ sub get_api {
 
   $period_id ||= ""; # Breakfast, lunch, dinner. Default is ""
   
-  get_json "https://api.dineoncampus.ca/v1/location/$location_id/periods/$period_id?platform=0&date=$date";
+  get_json "https://api.dineoncampus.ca/v1/location/$location_id/periods/$period_id?platform=0&date=$date/";
 }
 
 # Get all of the period names and IDs
@@ -151,7 +152,8 @@ sub select_period_id {
   }
 
   # If it doesn't match any, default to ""
-  "";
+  say "Couldn't find period \"$period_name.\"";
+  return "";
 }
 
 # Print out all of the categories in the menu
@@ -175,6 +177,30 @@ sub print_menu {
   }
 };
 
+# Convert user input yyyy-mm-dd date to yyyymmdd
+sub get_date_from_input {
+  my $readable_date = shift;
+
+  my $date = "$1$2$3" if ($readable_date =~ /^(\d{4})-(\d{2})-(\d{2})$/);
+
+  # Check $date is in yyyymmdd format
+  if (defined $date and $date =~ /^(\d{4})(\d{2})(\d{2})$/) {
+    # Try to use timelocal to check for a valid date
+    eval { my $test = timelocal(0, 0, 0, $3, $2-1, $1) };
+
+    # If it errored its an invalid date
+    if ($@) {
+      say "$readable_date is an invalid date.";
+      exit 1;
+    }
+  } else {
+    say "$readable_date is in an invalid date format.";
+    exit 1;
+  }
+
+  $date;
+}
+
 sub main {
   # Command line args
   my ($period_name, $date, $show_all, $help);
@@ -187,7 +213,7 @@ sub main {
 
   # Show help menu
   if ($help) {
-    say "usage: $0 [--period=breakfast/lunch/etc] [--date=DD-MM-YYYY] [--all]";
+    say "usage: $0 [--period=breakfast/lunch/etc] [--date=YYYY-MM-DD] [--all]";
     exit;
   }
   
@@ -201,17 +227,19 @@ sub main {
   # Get school and location IDs from names
   my $school_id = get_school_id $school_slug;
   my $location_id = get_location_id $school_id, $location_name;
-
+  
   # Get $date in yyyymmdd format and $readable_date in dd-mm-yyyy format
   my $readable_date;
   unless (defined $date) {
+    # Today
     $readable_date = strftime "%Y-%m-%d", localtime;
     $date = strftime "%Y%m%d", localtime;
   } else {
+    # Specific date
     $readable_date = $date;
-    $date =~ s/(\d{4})(\d{2})(\d{2})/$1-$2-$3/;
+    $date = get_date_from_input $readable_date;
   }
-
+  
   # Get/load period names and IDs from the API so we can get other periods
   my @periods;
   if (-e "periods.json") {
@@ -221,7 +249,7 @@ sub main {
     @periods = get_periods (get_api $school_id, $location_id, "", $date);
     save_periods \@periods;
   }
-  
+
   # API call with current period
   my $period_id = select_period_id $period_name, \@periods;
   my $api = get_api $school_id, $location_id, $period_id, $date;

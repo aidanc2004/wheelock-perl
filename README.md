@@ -1,6 +1,6 @@
 # wheelock-perl
 
-`usage: wheelock-perl [--period=breakfast/lunch/etc] [--date=DD-MM-YYYY] [--all]`
+`usage: wheelock-perl [--period=breakfast/lunch/etc] [--date=YYYY-MM-DD] [--all]`
 
 Program to get the current menu of Acadia University's dining hall Wheelock hall using Perl with the Dine on Campus API. Could potentially be used for other schools using Dine on Campus CA.
 
