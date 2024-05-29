@@ -204,17 +204,18 @@ sub get_date_from_input {
 
 sub main {
   # Command line args
-  my ($period_name, $date, $show_all, $help);
+  my ($period_name, $date, $show_all, $help, $json_output);
   GetOptions(
     "help" => \$help,
     "period=s" => \$period_name,
     "date=s" => \$date,
-    "all" => \$show_all
+    "all" => \$show_all,
+    "json" => \$json_output
   );
 
   # Show help menu
   if ($help) {
-    say "usage: $0 [--period=breakfast/lunch/etc] [--date=YYYY-MM-DD] [--all]";
+    say "usage: $0 [--period=breakfast/lunch/etc] [--date=YYYY-MM-DD] [--all] [--json]";
     exit;
   }
   
@@ -255,6 +256,12 @@ sub main {
   my $period_id = select_period_id $period_name, \@periods;
   my $api = get_api $school_id, $location_id, $period_id, $date;
 
+  # Only output JSON data if --json flag is enabled
+  if ($json_output) {
+    say encode_json $api;
+    exit;
+  }
+  
   # Print out the menu
   my $categories = get_menu $api, $location_name, $readable_date;
   print_menu $categories, $hidden, $show_all, $location_name, $readable_date;

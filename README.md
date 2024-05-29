@@ -1,6 +1,6 @@
 # wheelock-perl
 
-`usage: wheelock-perl [--period=breakfast/lunch/etc] [--date=YYYY-MM-DD] [--all]`
+`usage: wheelock-perl [--period=breakfast/lunch/etc] [--date=YYYY-MM-DD] [--all] [--json]`
 
 Program to get the current menu of Acadia University's dining hall Wheelock hall using Perl with the Dine on Campus API. Could potentially be used for other schools using Dine on Campus CA.
 
@@ -14,6 +14,7 @@ As I'm writing this, the Wheelock Hall menu is not open. I'm writing a lot of th
 - `--period`: What period of the menu should be shown. Breakfast, lunch, dinner, etc.
 - `--date`: The date to get the menu for in YYYY-MM-DD format. (ex. May 24th 2024 is 2024-05-24)
 - `--all`: Ignore hidden categories and show all.
+- `--json`: Output the API as JSON rather than printing the menu.
 
 ## Config
 
