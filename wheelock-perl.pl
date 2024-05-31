@@ -96,6 +96,7 @@ sub save_periods {
   open(my $fh, ">", $script_path . "periods.json")
     or die "Couldn't save to periods.json: $!";
   print $fh $json;
+  close $fh;
 }
 
 # Load periods from periods.json
@@ -103,6 +104,7 @@ sub load_periods {
   open(my $fh, "<", $script_path . "periods.json")
     or die "Couldn't load periods.json: $!";
   my $text = join("", <$fh>);
+  close $fh;
   my $json = decode_json $text;
   @$json;
 }
@@ -112,6 +114,7 @@ sub load_config {
   open(my $fh, "<", $script_path . "config.json")
     or die "Couldn't load config.json: $!";
   my $text = join("", <$fh>);
+  close $fh;
   my $json = decode_json $text;
   $json;
 }
