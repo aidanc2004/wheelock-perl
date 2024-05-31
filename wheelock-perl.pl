@@ -144,27 +144,27 @@ sub get_menu {
 # Get the period ID from the period name
 sub select_period_id {
   my $period_name = shift;
-  my @periods = shift;
+  my $periods = shift;
 
   # If no input then default to ""
   return "" unless (defined $period_name);
 
-  foreach (@periods) {
+  foreach (@$periods) {
     if (lc $period_name eq lc $_->{name}) {
       return $_->{id};
     }
   }
 
   # If it doesn't match any, default to ""
-  say "Couldn't find period \"$period_name.\"";
+  say "Couldn't find period \"$period_name\".";
   return "";
 }
 
 # Print out all of the categories in the menu
 sub print_menu {
-  my ($categories, $hidden, $location_name, $readable_date, $show_all) = @_;
+  my ($categories, $hidden, $show_all, $location_name, $readable_date) = @_;
 
-  say "$location_name, $readable_date:";
+  #say "\nMenu for $location_name on $readable_date:";
 
   foreach (@$categories) {
     my $name = $_->{name};
@@ -174,11 +174,13 @@ sub print_menu {
     next if (any { $_ eq $name } @$hidden and not $show_all);
 
     # Print a category
-    say "$name";
+    say "\n$name:";
     foreach (@$items) {
       say "- $_->{name}";
     }
   }
+
+  say ""; # Newline at the end
 };
 
 # Convert user input yyyy-mm-dd date to yyyymmdd
@@ -234,7 +236,7 @@ sub main {
   my $location_id = get_location_id $school_id, $location_name;
   
   # Get $date in yyyymmdd format and $readable_date in dd-mm-yyyy format
-  # TODO: yyyy-mm-dd format might work with the API, if so no need to convert format
+  # TODO: yyyy-mm-dd format works with the API, switch from yyyymmdd
   my $readable_date;
   unless (defined $date) {
     # Today
@@ -258,7 +260,7 @@ sub main {
   }
 
   # API call with current period
-  my $period_id = select_period_id $period_name, @periods;
+  my $period_id = select_period_id $period_name, \@periods;
   my $api = get_api $school_id, $location_id, $period_id, $date;
 
   # Only output JSON data if --json flag is enabled
