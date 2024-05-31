@@ -38,12 +38,16 @@ sub get_school_id {
   my $json = get_json "https://api.dineoncampus.ca/v1/sites/public_ca";
     
   my $sites = $json->{"sites"};
-  
+
+  # Find school slug in sites
   foreach (@$sites) {
     if ($_->{slug} eq $school_slug) {
       return $_->{id};
     }
   }
+
+  say "Couldn't find school '$school_slug'.";
+  exit 1;
 }
 
 # Get the ID of a location at the school
@@ -55,18 +59,22 @@ sub get_location_id {
 
   my $locations = $json->{standalone_locations};
 
+  # Find the location and return its ID
   foreach (@$locations) {
     if ($_->{name} eq $location_name) {
       return $_->{id};
     }
   }
+
+  say "Couldn't find location '$location_name'.";
+  exit 1;
 }
 
 # Get the API JSON as a hash reference
 sub get_api {
   my ($school_id, $location_id, $period_id, $date) = @_;
 
-  $period_id ||= ""; # Breakfast, lunch, dinner. Default is ""
+  $period_id ||= ""; # Breakfast, Lunch, Dinner. Default is ""
 
   get_json "https://api.dineoncampus.ca/v1/location/$location_id/periods/$period_id?platform=0&date=$date/";
 }
@@ -77,8 +85,8 @@ sub get_periods {
   
   my $api_periods = $api->{periods};
 
+  # Move periods from the API to @periods with name and ID
   my @periods;
-
   foreach (@$api_periods) {
     push(@periods, {
       name => $_->{name},
@@ -92,31 +100,62 @@ sub get_periods {
 # Save periods to periods.json
 sub save_periods {
   my $periods = shift;
+
+  # Encode periods array into json to store
   my $json = encode_json $periods;
+
+  # Open periods.json
   open(my $fh, ">", $script_path . "periods.json")
     or die "Couldn't save to periods.json: $!";
-  print $fh $json;
+  print $fh $json; # Print json to periods.json
   close $fh;
 }
 
-# Load periods from periods.json
+# Load periods array from periods.json
 sub load_periods {
+  # Open periods.json
   open(my $fh, "<", $script_path . "periods.json")
     or die "Couldn't load periods.json: $!";
   my $text = join("", <$fh>);
   close $fh;
+
+  # Return periods array
   my $json = decode_json $text;
   @$json;
 }
 
-# Load the config file from config.json
+# Load config variables from config.json
 sub load_config {
+  # Open config.json
   open(my $fh, "<", $script_path . "config.json")
     or die "Couldn't load config.json: $!";
   my $text = join("", <$fh>);
   close $fh;
+  
+  # Get all variables from config
   my $json = decode_json $text;
-  $json;
+
+  my $school = $json->{school};
+  my $location = $json->{location};
+  my $hidden_categories = $json->{hidden_categories};
+
+  # Check for missing variables
+  unless (defined $school) {
+    say "config.json: missing 'school'.";
+    exit 1;
+  }
+
+  unless (defined $location) {
+    say "config.json: missing 'location'.";
+    exit 1;
+  }
+
+  unless (defined $hidden_categories) {
+    say "config.json: missing 'hidden_categories'.";
+    exit 1;
+  }
+
+  ($school, $location, $hidden_categories);
 }
 
 # Get the categories of the menu from the API as a hash reference
@@ -156,15 +195,13 @@ sub select_period_id {
   }
 
   # If it doesn't match any, default to ""
-  say "Couldn't find period \"$period_name\".";
+  say "Couldn't find period '$period_name'.";
   return "";
 }
 
 # Print out all of the categories in the menu
 sub print_menu {
-  my ($categories, $hidden, $show_all, $location_name, $date) = @_;
-
-  #say "\nMenu for $location_name on $date:";
+  my ($categories, $hidden, $show_all, $location_name) = @_;
 
   foreach (@$categories) {
     my $name = $_->{name};
@@ -223,21 +260,17 @@ sub main {
   }
   
   # Load variables from config
-  my $config = load_config;
-  
-  my $school_slug = $config->{school};
-  my $location_name = $config->{location};
-  my $hidden = $config->{hidden_categories};
+  my ($school_slug, $location_name, $hidden) = load_config;
   
   # Get school and location IDs from names
   my $school_id = get_school_id $school_slug;
   my $location_id = get_location_id $school_id, $location_name;
   
   # Get date
-  unless (defined $date) {
-    $date = strftime "%Y-%m-%d", localtime;
-  } else {
+  if (defined $date) {
     validate_date $date;
+  } else {
+    $date = strftime "%Y-%m-%d", localtime;
   }
   
   # Get/load period names and IDs from the API so we can get other periods
@@ -263,7 +296,7 @@ sub main {
   
   # Print out the menu
   my $categories = get_menu $api, $location_name, $date;
-  print_menu $categories, $hidden, $show_all, $location_name, $date;
+  print_menu $categories, $hidden, $show_all, $location_name;
 }
 
 main;
