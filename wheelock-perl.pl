@@ -123,17 +123,17 @@ sub load_config {
 sub get_menu {
   my $api = shift;
   my $location_name = shift;
-  my $readable_date = shift;
+  my $date = shift;
   
   # Check if it's closed
   if ($api->{closed} == 1) {
-    say "$location_name is closed on $readable_date.";
+    say "$location_name is closed on $date.";
     exit;
   }
   
   # Check if a menu is avaliable
   unless (defined $api->{menu}) {
-    say "No menu for $location_name avaliable for $readable_date.";
+    say "No menu for $location_name avaliable for $date.";
     exit;
   }
 
@@ -162,9 +162,9 @@ sub select_period_id {
 
 # Print out all of the categories in the menu
 sub print_menu {
-  my ($categories, $hidden, $show_all, $location_name, $readable_date) = @_;
+  my ($categories, $hidden, $show_all, $location_name, $date) = @_;
 
-  #say "\nMenu for $location_name on $readable_date:";
+  #say "\nMenu for $location_name on $date:";
 
   foreach (@$categories) {
     my $name = $_->{name};
@@ -183,28 +183,26 @@ sub print_menu {
   say ""; # Newline at the end
 };
 
-# Convert user input yyyy-mm-dd date to yyyymmdd
-sub get_date_from_input {
-  my $readable_date = shift;
+# Check if user inputted date is valid
+sub validate_date {
+  my $date = shift;
 
-  my $date = "$1$2$3" if ($readable_date =~ /^(\d{4})-(\d{2})-(\d{2})$/);
+  my $yyyymmdd = "$1$2$3" if ($date =~ /^(\d{4})-(\d{2})-(\d{2})$/);
 
-  # Check $date is in yyyymmdd format
-  if (defined $date and $date =~ /^(\d{4})(\d{2})(\d{2})$/) {
+  # Check it's in yyyymmdd format
+  if (defined $yyyymmdd and $yyyymmdd =~ /^(\d{4})(\d{2})(\d{2})$/) {
     # Try to use timelocal to check for a valid date
     eval { my $test = timelocal(0, 0, 0, $3, $2-1, $1) };
 
     # If it errored its an invalid date
     if ($@) {
-      say "$readable_date is an invalid date.";
+      say "$date is an invalid date.";
       exit 1;
     }
   } else {
-    say "$readable_date is in an invalid date format.";
+    say "$date is in an invalid date format.";
     exit 1;
   }
-
-  $date;
 }
 
 sub main {
@@ -235,17 +233,11 @@ sub main {
   my $school_id = get_school_id $school_slug;
   my $location_id = get_location_id $school_id, $location_name;
   
-  # Get $date in yyyymmdd format and $readable_date in dd-mm-yyyy format
-  # TODO: yyyy-mm-dd format works with the API, switch from yyyymmdd
-  my $readable_date;
+  # Get date
   unless (defined $date) {
-    # Today
-    $readable_date = strftime "%Y-%m-%d", localtime;
-    $date = strftime "%Y%m%d", localtime;
+    $date = strftime "%Y-%m-%d", localtime;
   } else {
-    # Specific date
-    $readable_date = $date;
-    $date = get_date_from_input $readable_date;
+    validate_date $date;
   }
   
   # Get/load period names and IDs from the API so we can get other periods
@@ -270,8 +262,8 @@ sub main {
   }
   
   # Print out the menu
-  my $categories = get_menu $api, $location_name, $readable_date;
-  print_menu $categories, $hidden, $show_all, $location_name, $readable_date;
+  my $categories = get_menu $api, $location_name, $date;
+  print_menu $categories, $hidden, $show_all, $location_name, $date;
 }
 
 main;
