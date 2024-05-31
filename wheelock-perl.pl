@@ -67,7 +67,7 @@ sub get_api {
   my ($school_id, $location_id, $period_id, $date) = @_;
 
   $period_id ||= ""; # Breakfast, lunch, dinner. Default is ""
-  
+
   get_json "https://api.dineoncampus.ca/v1/location/$location_id/periods/$period_id?platform=0&date=$date/";
 }
 
@@ -144,12 +144,12 @@ sub get_menu {
 # Get the period ID from the period name
 sub select_period_id {
   my $period_name = shift;
-  my $periods = shift;
+  my @periods = shift;
 
   # If no input then default to ""
   return "" unless (defined $period_name);
 
-  foreach (@$periods) {
+  foreach (@periods) {
     if (lc $period_name eq lc $_->{name}) {
       return $_->{id};
     }
@@ -234,6 +234,7 @@ sub main {
   my $location_id = get_location_id $school_id, $location_name;
   
   # Get $date in yyyymmdd format and $readable_date in dd-mm-yyyy format
+  # TODO: yyyy-mm-dd format might work with the API, if so no need to convert format
   my $readable_date;
   unless (defined $date) {
     # Today
@@ -252,11 +253,12 @@ sub main {
     @periods = load_periods;
   } else {
     @periods = get_periods (get_api $school_id, $location_id, "", $date);
-    save_periods \@periods;
+    # Don't bother saving if it got nothing (meaning the sites down or closed)
+    save_periods \@periods if @periods;
   }
 
   # API call with current period
-  my $period_id = select_period_id $period_name, \@periods;
+  my $period_id = select_period_id $period_name, @periods;
   my $api = get_api $school_id, $location_id, $period_id, $date;
 
   # Only output JSON data if --json flag is enabled
