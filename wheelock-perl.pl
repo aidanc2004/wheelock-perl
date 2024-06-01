@@ -164,15 +164,15 @@ sub get_menu {
   my $location_name = shift;
   my $date = shift;
   
-  # Check if it's closed
-  if ($api->{closed} == 1) {
-    say "$location_name is closed on $date.";
-    exit;
-  }
-  
   # Check if a menu is avaliable
   unless (defined $api->{menu}) {
     say "No menu for $location_name avaliable for $date.";
+    exit;
+  }
+
+  # Check if it's closed
+  if ($api->{closed} == 1) {
+    say "$location_name is closed on $date.";
     exit;
   }
 
