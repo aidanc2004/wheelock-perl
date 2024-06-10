@@ -4,7 +4,6 @@
 
 use strict;
 use warnings;
-
 use feature "say";
 
 use JSON;
@@ -54,7 +53,7 @@ sub get_school_id {
 sub get_location_id {
   my $school_id = shift;
   my $location_name = shift;
-
+  
   my $json = get_json "https://api.dineoncampus.ca/v1/locations/buildings_locations?site_id=$school_id";
 
   my $locations = $json->{standalone_locations};
@@ -68,6 +67,17 @@ sub get_location_id {
 
   say "Couldn't find location '$location_name'.";
   exit 1;
+}
+
+# Get JSON representing all of the sites
+sub get_sites_json {
+  encode_json get_json "https://api.dineoncampus.ca/v1/sites/public_ca";
+}
+
+# Get JSON representing all of the location of a site
+sub get_locations_json {
+  my $school_id = shift;
+  encode_json get_json "https://api.dineoncampus.ca/v1/locations/buildings_locations?site_id=$school_id";
 }
 
 # Get the API JSON as a hash reference
@@ -250,7 +260,7 @@ sub main {
     "period=s" => \$period_name,
     "date=s" => \$date,
     "all" => \$show_all,
-    "json" => \$json_output
+    "json=s" => \$json_output
   );
 
   # Show help menu
@@ -261,9 +271,20 @@ sub main {
   
   # Load variables from config
   my ($school_slug, $location_name, $hidden) = load_config;
+
+  # Get school and location IDs from names / Get JSON
+  if ($json_output eq "sites") {
+    say get_sites_json;
+    return;
+  }
   
-  # Get school and location IDs from names
   my $school_id = get_school_id $school_slug;
+
+  if ($json_output eq "locations") {
+    say get_locations_json $school_id;
+    return;
+  }
+  
   my $location_id = get_location_id $school_id, $location_name;
   
   # Get date
@@ -288,8 +309,8 @@ sub main {
   my $period_id = select_period_id $period_name, \@periods;
   my $api = get_api $school_id, $location_id, $period_id, $date;
 
-  # Only output JSON data if --json flag is enabled
-  if ($json_output) {
+  # Only output JSON data if --json=menu flag is enabled
+  if ($json_output eq "menu") {
     say encode_json $api;
     exit;
   }
